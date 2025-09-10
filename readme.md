@@ -16,7 +16,4 @@
 
 ヾ(≧ ▽ ≦)ゝ( *︾▽︾)o((>ω< ))o
 
-<p align="center">
-  <img width="400" height="250" src="https://github.com/user-attachments/assets/6a49f610-49f7-44d8-9285-c815e331047d"
->
-</p>
+
