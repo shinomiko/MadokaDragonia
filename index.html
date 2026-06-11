@@ -1,24 +1,201 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>URL Shortener Microservice</title>
-    <link href="/public/style.css" rel="stylesheet" type="text/css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Лабораторная работа - Каталог фильмов</title>
+
+  <link href="https://jsdelivr.net" rel="stylesheet">
+  <link href="https://jsdelivr.net" rel="stylesheet">
 </head>
 <body>
-    <h1>URL Shortener Microservice</h1>
-    <h2>Short URL Creation</h2>
-    <p>Example: <code>POST [project_url]/api/shorturl</code> - https://www.google.com</p>
-    
-    <div class="container">
-        <form action="/api/shorturl" method="POST">
-            <fieldset>
-                <legend>URL Shortener</legend>
-                <label>URL: </label>
-                <input id="url_input" type="text" name="url" placeholder="https://www.freecodecamp.org/" required>
-                <input type="submit" value="POST URL">
-            </fieldset>
-        </form>
-    </div>
+
+  <div id="app">
+    <v-app theme="dark">
+      
+      <v-app-bar color="indigo" elevation="2">
+        <v-icon icon="mdi-movie-open" class="ms-4"></v-icon>
+        <v-app-bar-title>Каталог Фильмов</v-app-bar-title>
+      </v-app-bar>
+
+      <v-main>
+        <v-container class="mt-4">
+          
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="search"
+                label="Поиск по названию..."
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                clearable
+              ></v-text-field>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="selectedGenre"
+                :items="genresList"
+                label="Фильтр по жанрам"
+                variant="outlined"
+              ></v-select>
+            </v-col>
+          </v-row>
+
+          <v-row v-if="filteredMovies.length > 0">
+            <v-col
+              v-for="item in filteredMovies"
+              :key="item.id"
+              cols="12"
+              sm="6"
+              md="4"
+            >
+              <v-card class="mx-auto my-2" max-width="350">
+                <v-img :src="item.poster" height="250" cover></v-img>
+
+                <v-card-item>
+                  <v-card-title>{{ item.title }}</v-card-title>
+                  <v-card-subtitle>{{ item.year }} год — {{ item.genre }}</v-card-subtitle>
+                </v-card-item>
+
+                <v-card-text>
+                  <v-chip color="amber" text-color="black" size="small">
+                    <v-icon icon="mdi-star" start size="16"></v-icon>
+                    Рейтинг: {{ item.rating }}
+                  </v-chip>
+                </v-card-text>
+
+                <v-card-actions>
+                  <v-btn color="indigo-lighten-2" variant="text" @click="showDetails(item)">
+                    Подробнее
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <!-- Сообщение, если ничего не нашлось -->
+          <v-row v-else class="text-center mt-10">
+            <v-col cols="12">
+              <p class="text-h6 text-grey">Фильмы не найдены</p>
+            </v-col>
+          </v-row>
+
+        </v-container>
+      </v-main>
+
+      <v-dialog v-model="dialogVisible" max-width="500px">
+        <v-card v-if="currentMovie">
+          <v-img :src="currentMovie.poster" height="300" cover></v-img>
+          
+          <v-card-title class="text-h5 mt-2">
+            {{ currentMovie.title }}
+          </v-card-title>
+          
+          <v-card-subtitle>
+            Продолжительность: {{ currentMovie.duration }}
+          </v-card-subtitle>
+
+          <v-card-text class="text-body-1 mt-2">
+            {{ currentMovie.description }}
+          </v-card-text>
+
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="error" variant="text" @click="dialogVisible = false">
+              Закрыть
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+    </v-app>
+  </div>
+
+  <script src="https://jsdelivr.net"></script>
+  <script src="https://jsdelivr.net"></script>
+
+  <script>
+    const { createApp } = Vue
+    const { createVuetify } = Vuetify
+
+    const vuetify = createVuetify()
+
+    createApp({
+      data() {
+        return {
+          search: '',
+          selectedGenre: 'Все жанры',
+          genresList: ['Все жанры', 'Фантастика', 'Экшен', 'Драма', 'Аниме'],
+          dialogVisible: false,
+          currentMovie: null,
+          movies: [
+            {
+              id: 1,
+              title: "Интерстеллар",
+              genre: "Фантастика",
+              rating: 8.6,
+              year: 2014,
+              duration: "169 мин",
+              poster: "https://unsplash.com",
+              description: "Группа исследователей отправляется сквозь червоточину в космическое путешествие, чтобы найти планету с подходящими условиями для жизни человечества."
+            },
+            {
+              id: 2,
+              title: "Начало",
+              genre: "Экшен",
+              rating: 8.8,
+              year: 2010,
+              duration: "148 мин",
+              poster: "https://unsplash.com",
+              description: "Профессиональный вор Кобб крадет ценные секреты из глубин подсознания во время сна. Ему дают шанс вернуть свою жизнь, но для этого нужно совершить обратное — внедрить идею."
+            },
+            {
+              id: 3,
+              title: "Темный рыцарь",
+              genre: "Драма",
+              rating: 9.0,
+              year: 2008,
+              duration: "152 мин",
+              poster: "https://unsplash.com",
+              description: "Бэтмен поднимает ставки в войне с криминалом в городе Готэм. Он сталкивается с новым гением преступного мира, известным как Джокер."
+            },
+            {
+              id: 4,
+              title: "Унесенные призраками",
+              genre: "Аниме",
+              rating: 8.4,
+              year: 2001,
+              duration: "125 мин",
+              poster: "https://unsplash.com",
+              description: "Маленькая девочка Тихиро попадает в таинственный мир, населенный призраками и магами. Ей нужно спасти своих родителей, превращенных в свиней."
+            }
+          ]
+        }
+      },
+      computed: {
+        filteredMovies() {
+          return this.movies.filter(movie => {
+            const matchSearch = movie.title.toLowerCase().indexOf(this.search.toLowerCase()) !== -1;
+            
+            let matchGenre = false;
+            if (this.selectedGenre === 'Все жанры') {
+              matchGenre = true;
+            } else if (movie.genre === this.selectedGenre) {
+              matchGenre = true;
+            }
+            
+            return matchSearch && matchGenre;
+          });
+        }
+      },
+      methods: {
+        showDetails(movie) {
+          this.currentMovie = movie;
+          this.dialogVisible = true;
+        }
+      }
+    }).use(vuetify).mount('#app')
+  </script>
 </body>
 </html>
