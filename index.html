@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Библиотека книг</title>
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@3.7.6/dist/vuetify.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@3.7.6/dist/vuetify.min.js"></script>
+</head>
+<body>
+
+<div id="app">
+    <v-app>
+        <v-container>
+            
+            <!-- карточка добавления -->
+            <app-card title="новая книга">
+                <v-text-field v-model="newBook.title" label="название" variant="outlined"></v-text-field>
+                <v-text-field v-model="newBook.author" label="автор" variant="outlined"></v-text-field>
+                <v-text-field v-model="newBook.year" label="год" type="number" variant="outlined"></v-text-field>
+                <v-select v-model="newBook.genre" label="жанр" :items="genres" variant="outlined"></v-select>
+                <v-textarea v-model="newBook.desc" label="описание" rows="2" variant="outlined"></v-textarea>
+                <v-btn @click="addBook" color="primary" block>добавить</v-btn>
+            </app-card>
+            
+            <!-- карточка статистики -->
+            <app-card title="статистика" class="mt-4">
+                <v-list>
+                    <v-list-item title="всего" :subtitle="books.length"></v-list-item>
+                    <v-list-item title="прочитано" :subtitle="readCount"></v-list-item>
+                    <v-list-item title="осталось" :subtitle="unreadCount"></v-list-item>
+                </v-list>
+            </app-card>
+            
+            <!-- карточка списка -->
+            <app-card title="список книг" class="mt-4">
+                <v-text-field v-model="search" label="поиск" prepend-inner-icon="mdi-magnify" density="compact" variant="outlined" class="mb-3"></v-text-field>
+                
+                <v-btn-toggle v-model="filter" divided class="mb-3">
+                    <v-btn value="all">все</v-btn>
+                    <v-btn value="read">прочитанные</v-btn>
+                    <v-btn value="unread">непрочитанные</v-btn>
+                </v-btn-toggle>
+                
+                <book-list :items="filteredBooks" @remove="removeBook" @edit="openEdit">
+                    <template #item="{ item, index }">
+                        <div class="pa-3 mb-2 border rounded">
+                            <div class="d-flex align-center">
+                                <v-checkbox-btn v-model="item.read" @change="saveData" hide-details density="compact"></v-checkbox-btn>
+                                <div class="ml-2 flex-grow-1" :class="{ 'text-decoration-line-through': item.read }">
+                                    <div class="font-weight-bold">{{ item.title }}</div>
+                                    <div class="text-caption">{{ item.author }} ({{ item.year }})</div>
+                                    <div class="text-caption text-medium-emphasis">{{ item.genre }}</div>
+                                    <div class="text-body-2 mt-1">{{ item.desc }}</div>
+                                </div>
+                                <v-btn @click="openEdit(item, index)" icon="mdi-pencil" variant="text" size="small" class="mr-1"></v-btn>
+                                <v-btn @click="removeBook(index)" icon="mdi-delete" color="red" variant="text" size="small"></v-btn>
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <template #empty>
+                        <div class="text-center pa-4 text-grey">нет книг</div>
+                    </template>
+                </book-list>
+                
+                <template #actions>
+                    <v-btn @click="clearAll" color="red" variant="text">удалить всё</v-btn>
+                    <v-spacer></v-spacer>
+                    <v-btn @click="markAllRead" color="green" variant="text">всё прочитано</v-btn>
+                </template>
+            </app-card>
+            
+            <!-- модалка редактирования -->
+            <app-modal v-model="modalOpen">
+                <template #header>редактировать</template>
+                <template #text>
+                    <v-text-field v-model="editItem.title" label="название" variant="outlined"></v-text-field>
+                    <v-text-field v-model="editItem.author" label="автор" variant="outlined"></v-text-field>
+                    <v-text-field v-model="editItem.year" label="год" variant="outlined"></v-text-field>
+                    <v-select v-model="editItem.genre" label="жанр" :items="genres" variant="outlined"></v-select>
+                    <v-textarea v-model="editItem.desc" label="описание" variant="outlined"></v-textarea>
+                </template>
+                <template #actions>
+                    <v-btn @click="modalOpen = false">отмена</v-btn>
+                    <v-btn @click="saveEdit" color="primary">сохранить</v-btn>
+                </template>
+            </app-modal>
+            
+        </v-container>
+    </v-app>
+</div>
+
+<script>
+const { createApp, ref, computed } = Vue;
+const vuetify = Vuetify.createVuetify();
+
+// компонент карточки - простой слот
+const AppCard = {
+    props: ['title'],
+    template: `
+        <v-card>
+            <v-card-title>{{ title }}</v-card-title>
+            <v-card-text>
+                <slot></slot>
+            </v-card-text>
+            <v-card-actions v-if="$slots.actions">
+                <slot name="actions"></slot>
+            </v-card-actions>
+        </v-card>
+    `
+};
+
+// компонент модалки - именованные слоты
+const AppModal = {
+    props: ['modelValue'],
+    emits: ['update:modelValue'],
+    template: `
+        <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="500">
+            <v-card>
+                <v-card-title><slot name="header"></slot></v-card-title>
+                <v-card-text><slot name="text"></slot></v-card-text>
+                <v-card-actions><slot name="actions"></slot></v-card-actions>
+            </v-card>
+        </v-dialog>
+    `
+};
+
+// компонент списка - scoped slot
+const BookList = {
+    props: ['items'],
+    emits: ['remove', 'edit'],
+    template: `
+        <div>
+            <div v-for="(item, idx) in items" :key="idx">
+                <slot name="item" :item="item" :index="idx"></slot>
+            </div>
+            <div v-if="items.length === 0">
+                <slot name="empty">пусто</slot>
+            </div>
+        </div>
+    `
+};
+
+createApp({
+    components: { AppCard, AppModal, BookList },
+    setup() {
+        const books = ref([]);
+        const newBook = ref({ title: '', author: '', year: '', genre: '', desc: '' });
+        const search = ref('');
+        const filter = ref('all');
+        const genres = ['роман', 'детектив', 'фантастика', 'поэзия', 'учебник', 'другое'];
+        
+        const modalOpen = ref(false);
+        const editItem = ref({});
+        let editIndex = ref(-1);
+        
+        const loadData = () => {
+            const data = localStorage.getItem('books');
+            if (data) {
+                books.value = JSON.parse(data);
+            } else {
+                books.value = [
+                    { title: 'война и мир', author: 'толстой', year: '1869', genre: 'роман', desc: 'эпопея', read: false },
+                    { title: 'преступление и наказание', author: 'достоевский', year: '1866', genre: 'роман', desc: 'психология', read: true },
+                    { title: 'мастер и маргарита', author: 'булгаков', year: '1967', genre: 'фантастика', desc: 'дьяволиада', read: false }
+                ];
+            }
+        };
+        
+        const saveData = () => {
+            localStorage.setItem('books', JSON.stringify(books.value));
+        };
+        
+        const addBook = () => {
+            if (newBook.value.title && newBook.value.author) {
+                books.value.push({
+                    title: newBook.value.title,
+                    author: newBook.value.author,
+                    year: newBook.value.year || 'нет',
+                    genre: newBook.value.genre || 'другое',
+                    desc: newBook.value.desc || '',
+                    read: false
+                });
+                newBook.value = { title: '', author: '', year: '', genre: '', desc: '' };
+                saveData();
+            }
+        };
+        
+        const removeBook = (index) => {
+            if (confirm('удалить?')) {
+                books.value.splice(index, 1);
+                saveData();
+            }
+        };
+        
+        const openEdit = (item, index) => {
+            editIndex.value = index;
+            editItem.value = { ...item };
+            modalOpen.value = true;
+        };
+        
+        const saveEdit = () => {
+            books.value[editIndex.value] = editItem.value;
+            saveData();
+            modalOpen.value = false;
+        };
+        
+        const clearAll = () => {
+            if (confirm('удалить все книги?')) {
+                books.value = [];
+                saveData();
+            }
+        };
+        
+        const markAllRead = () => {
+            books.value.forEach(b => b.read = true);
+            saveData();
+        };
+        
+        const readCount = computed(() => books.value.filter(b => b.read).length);
+        const unreadCount = computed(() => books.value.length - readCount.value);
+        
+        const filteredBooks = computed(() => {
+            let result = books.value;
+            if (filter.value === 'read') result = result.filter(b => b.read);
+            if (filter.value === 'unread') result = result.filter(b => !b.read);
+            if (search.value) {
+                const q = search.value.toLowerCase();
+                result = result.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
+            }
+            return result;
+        });
+        
+        loadData();
+        
+        return {
+            books,
+            newBook,
+            search,
+            filter,
+            genres,
+            modalOpen,
+            editItem,
+            readCount,
+            unreadCount,
+            filteredBooks,
+            addBook,
+            removeBook,
+            openEdit,
+            saveEdit,
+            clearAll,
+            markAllRead,
+            saveData
+        };
+    }
+}).use(vuetify).mount('#app');
+</script>
+
+</body>
+</html>
