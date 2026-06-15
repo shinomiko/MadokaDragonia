@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>библиотека книг</title>
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@3.7.6/dist/vuetify.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="main.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@3.7.6/dist/vuetify.min.js"></script>
+</head>
+<body>
+
+<div id="app">
+    <v-app>
+        <v-container>
+            
+            <v-row justify="center">
+                <v-col cols="12" sm="8" md="6">
+                    <v-card>
+                        <v-card-title>новая книга</v-card-title>
+                        <v-card-text>
+                            <v-text-field v-model="a.title" label="название" variant="outlined"></v-text-field>
+                            <v-text-field v-model="a.author" label="автор" variant="outlined"></v-text-field>
+                            <v-text-field v-model="a.year" label="год" type="number" variant="outlined"></v-text-field>
+                            <v-select v-model="a.genre" label="жанр" :items="g" variant="outlined"></v-select>
+                            <v-textarea v-model="a.desc" label="описание" rows="2" variant="outlined"></v-textarea>
+                            <v-btn @click="add" color="primary" block>добавить</v-btn>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+            </v-row>
+            
+            <v-row justify="center" class="mt-4">
+                <v-col cols="12" sm="8" md="6">
+                    <v-card>
+                        <v-card-title>статистика</v-card-title>
+                        <v-card-text>
+                            <div>всего: {{ b.length }}</div>
+                            <div>прочитал: {{ r }}</div>
+                            <div>не прочитал: {{ u }}</div>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+            </v-row>
+            
+            <v-row justify="center" class="mt-4">
+                <v-col cols="12" sm="8" md="6">
+                    <v-card>
+                        <v-card-title>список</v-card-title>
+                        <v-card-text>
+                            <v-text-field v-model="s" label="поиск" prepend-inner-icon="mdi-magnify" density="compact" class="mb-3" variant="outlined"></v-text-field>
+                            
+                            <v-btn-toggle v-model="f" divided class="mb-3">
+                                <v-btn value="all">все</v-btn>
+                                <v-btn value="read">прочитал</v-btn>
+                                <v-btn value="unread">не прочитал</v-btn>
+                            </v-btn-toggle>
+                            
+                            <div v-for="(i, idx) in filtered" :key="idx" class="mb-3 border pa-3">
+                                <div>
+                                    <v-checkbox-btn v-model="i.read" @change="save"></v-checkbox-btn>
+                                    <div>
+                                        <div :class="{'text-decoration-line-through': i.read}">
+                                            <b>{{ i.title }}</b>
+                                        </div>
+                                        <div>{{ i.author }} ({{ i.year }})</div>
+                                        <div>{{ i.genre }}</div>
+                                        <div>{{ i.desc }}</div>
+                                    </div>
+                                    <v-btn @click="del(idx)" icon="mdi-delete" color="red" variant="text"></v-btn>
+                                </div>
+                            </div>
+                            
+                            <div v-if="filtered.length == 0">
+                                нет книг
+                            </div>
+                        </v-card-text>
+                        
+                        <v-card-actions>
+                            <v-btn @click="clear" color="red" variant="text">удалить всё</v-btn>
+                            <v-spacer></v-spacer>
+                            <v-btn @click="markAll" color="green" variant="text">всё прочитал</v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-col>
+            </v-row>
+            
+            <v-dialog v-model="d" max-width="500">
+                <v-card>
+                    <v-card-title>редакт</v-card-title>
+                    <v-card-text>
+                        <v-text-field v-model="e.title" label="название" variant="outlined"></v-text-field>
+                        <v-text-field v-model="e.author" label="автор" variant="outlined"></v-text-field>
+                        <v-text-field v-model="e.year" label="год" variant="outlined"></v-text-field>
+                        <v-select v-model="e.genre" label="жанр" :items="g" variant="outlined"></v-select>
+                        <v-textarea v-model="e.desc" label="описание" variant="outlined"></v-textarea>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-btn @click="d = false">нет</v-btn>
+                        <v-btn @click="saveEdit" color="primary">да</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+            
+        </v-container>
+    </v-app>
+</div>
+
+<script>
+const { createApp, ref, computed } = Vue;
+const vuetify = Vuetify.createVuetify();
+
+createApp({
+    setup() {
+        let b = ref([]);
+        let a = ref({ title: '', author: '', year: '', genre: '', desc: '' });
+        let s = ref('');
+        let f = ref('all');
+        let d = ref(false);
+        let e = ref({});
+        let idx = ref(-1);
+        let g = ['роман', 'детектив', 'фантастика', 'поэзия', 'учебник', 'другое'];
+        
+        let load = () => {
+            let x = localStorage.getItem('my_lib');
+            if (x) {
+                b.value = JSON.parse(x);
+            } else {
+                b.value = [
+                    { title: 'война и мир', author: 'толстой', year: '1869', genre: 'роман', desc: 'про войну', read: true },
+                    { title: 'преступление и наказание', author: 'достоевский', year: '1866', genre: 'роман', desc: 'про студента', read: false },
+                    { title: 'мастер и маргарита', author: 'булгаков', year: '1967', genre: 'фантастика', desc: 'про мастера', read: false }
+                ];
+            }
+        };
+        
+        let save = () => {
+            localStorage.setItem('my_lib', JSON.stringify(b.value));
+        };
+        
+        let add = () => {
+            if (a.value.title && a.value.author) {
+                b.value.push({
+                    title: a.value.title,
+                    author: a.value.author,
+                    year: a.value.year || 'нет',
+                    genre: a.value.genre || 'другое',
+                    desc: a.value.desc || '',
+                    read: false
+                });
+                a.value = { title: '', author: '', year: '', genre: '', desc: '' };
+                save();
+            }
+        };
+        
+        let del = (i) => {
+            if (confirm('удалить?')) {
+                b.value.splice(i, 1);
+                save();
+            }
+        };
+        
+        let edit = (i) => {
+            idx.value = i;
+            e.value = { ...b.value[i] };
+            d.value = true;
+        };
+        
+        let saveEdit = () => {
+            b.value[idx.value] = e.value;
+            save();
+            d.value = false;
+        };
+        
+        let clear = () => {
+            if (confirm('удалить всё?')) {
+                b.value = [];
+                save();
+            }
+        };
+        
+        let markAll = () => {
+            b.value.forEach(i => i.read = true);
+            save();
+        };
+        
+        let r = computed(() => b.value.filter(i => i.read).length);
+        let u = computed(() => b.value.length - r.value);
+        
+        let filtered = computed(() => {
+            let res = b.value;
+            if (f.value === 'read') res = res.filter(i => i.read);
+            if (f.value === 'unread') res = res.filter(i => !i.read);
+            if (s.value) {
+                let q = s.value.toLowerCase();
+                res = res.filter(i => i.title.toLowerCase().includes(q) || i.author.toLowerCase().includes(q));
+            }
+            return res;
+        });
+        
+        load();
+        
+        return {
+            b, a, s, f, d, e, g, r, u, filtered,
+            add, del, edit, saveEdit, clear, markAll, save
+        };
+    }
+}).use(vuetify).mount('#app');
+</script>
+
+</body>
+</html>

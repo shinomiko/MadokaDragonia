@@ -1,0 +1,1 @@
+const { defineConfig } = require('vite') 
