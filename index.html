@@ -2,10 +2,18 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>библиотека книг</title>
+    <title>Библиотека книг</title>
     <link href="https://cdn.jsdelivr.net/npm/vuetify@3.7.6/dist/vuetify.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="main.css">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <style>
+        .border {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+    </style>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vuex@4/dist/vuex.global.js"></script>
+    <script src="https://unpkg.com/vue-i18n@9/dist/vue-i18n.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vuetify@3.7.6/dist/vuetify.min.js"></script>
 </head>
 <body>
@@ -13,18 +21,30 @@
 <div id="app">
     <v-app>
         <v-container>
+            <v-row justify="center">
+                <v-col cols="12" sm="8" md="6">
+                    <v-card class="mb-6">
+                        <v-card-text class="d-flex justify-end">
+                            <v-btn-toggle v-model="$i18n.locale" mandatory density="compact">
+                                <v-btn value="ru">Русский</v-btn>
+                                <v-btn value="en">English</v-btn>
+                            </v-btn-toggle>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+            </v-row>
             
             <v-row justify="center">
                 <v-col cols="12" sm="8" md="6">
                     <v-card>
-                        <v-card-title>новая книга</v-card-title>
+                        <v-card-title>{{ $t('newBook') }}</v-card-title>
                         <v-card-text>
-                            <v-text-field v-model="a.title" label="название" variant="outlined"></v-text-field>
-                            <v-text-field v-model="a.author" label="автор" variant="outlined"></v-text-field>
-                            <v-text-field v-model="a.year" label="год" type="number" variant="outlined"></v-text-field>
-                            <v-select v-model="a.genre" label="жанр" :items="g" variant="outlined"></v-select>
-                            <v-textarea v-model="a.desc" label="описание" rows="2" variant="outlined"></v-textarea>
-                            <v-btn @click="add" color="primary" block>добавить</v-btn>
+                            <v-text-field v-model="a.title" :label="$t('title')" variant="outlined"></v-text-field>
+                            <v-text-field v-model="a.author" :label="$t('author')" variant="outlined"></v-text-field>
+                            <v-text-field v-model="a.year" :label="$t('year')" type="number" variant="outlined"></v-text-field>
+                            <v-select v-model="a.genre" :label="$t('genre')" :items="g" variant="outlined"></v-select>
+                            <v-textarea v-model="a.desc" :label="$t('desc')" rows="2" variant="outlined"></v-textarea>
+                            <v-btn @click="add" color="primary" block>{{ $t('add') }}</v-btn>
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -33,11 +53,11 @@
             <v-row justify="center" class="mt-4">
                 <v-col cols="12" sm="8" md="6">
                     <v-card>
-                        <v-card-title>статистика</v-card-title>
+                        <v-card-title>{{ $t('stats') }}</v-card-title>
                         <v-card-text>
-                            <div>всего: {{ b.length }}</div>
-                            <div>прочитал: {{ r }}</div>
-                            <div>не прочитал: {{ u }}</div>
+                            <div>{{ $t('total') }}: {{ b.length }}</div>
+                            <div>{{ $t('read') }}: {{ r }}</div>
+                            <div>{{ $t('unread') }}: {{ u }}</div>
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -46,20 +66,20 @@
             <v-row justify="center" class="mt-4">
                 <v-col cols="12" sm="8" md="6">
                     <v-card>
-                        <v-card-title>список</v-card-title>
+                        <v-card-title>{{ $t('list') }}</v-card-title>
                         <v-card-text>
-                            <v-text-field v-model="s" label="поиск" prepend-inner-icon="mdi-magnify" density="compact" class="mb-3" variant="outlined"></v-text-field>
+                            <v-text-field v-model="s" :label="$t('search')" prepend-inner-icon="mdi-magnify" density="compact" class="mb-3" variant="outlined"></v-text-field>
                             
                             <v-btn-toggle v-model="f" divided class="mb-3">
-                                <v-btn value="all">все</v-btn>
-                                <v-btn value="read">прочитал</v-btn>
-                                <v-btn value="unread">не прочитал</v-btn>
+                                <v-btn value="all">{{ $t('all') }}</v-btn>
+                                <v-btn value="read">{{ $t('readBtn') }}</v-btn>
+                                <v-btn value="unread">{{ $t('unreadBtn') }}</v-btn>
                             </v-btn-toggle>
                             
                             <div v-for="(i, idx) in filtered" :key="idx" class="mb-3 border pa-3">
-                                <div>
+                                <div class="d-flex align-center">
                                     <v-checkbox-btn v-model="i.read" @change="save"></v-checkbox-btn>
-                                    <div>
+                                    <div class="ml-2 flex-grow-1">
                                         <div :class="{'text-decoration-line-through': i.read}">
                                             <b>{{ i.title }}</b>
                                         </div>
@@ -71,15 +91,15 @@
                                 </div>
                             </div>
                             
-                            <div v-if="filtered.length == 0">
-                                нет книг
+                            <div v-if="filtered.length == 0" class="text-center pa-4 text-grey">
+                                {{ $t('empty') }}
                             </div>
                         </v-card-text>
                         
                         <v-card-actions>
-                            <v-btn @click="clear" color="red" variant="text">удалить всё</v-btn>
+                            <v-btn @click="clear" color="red" variant="text">{{ $t('deleteAll') }}</v-btn>
                             <v-spacer></v-spacer>
-                            <v-btn @click="markAll" color="green" variant="text">всё прочитал</v-btn>
+                            <v-btn @click="markAll" color="green" variant="text">{{ $t('markAll') }}</v-btn>
                         </v-card-actions>
                     </v-card>
                 </v-col>
@@ -87,17 +107,17 @@
             
             <v-dialog v-model="d" max-width="500">
                 <v-card>
-                    <v-card-title>редакт</v-card-title>
+                    <v-card-title>{{ $t('edit') }}</v-card-title>
                     <v-card-text>
-                        <v-text-field v-model="e.title" label="название" variant="outlined"></v-text-field>
-                        <v-text-field v-model="e.author" label="автор" variant="outlined"></v-text-field>
-                        <v-text-field v-model="e.year" label="год" variant="outlined"></v-text-field>
-                        <v-select v-model="e.genre" label="жанр" :items="g" variant="outlined"></v-select>
-                        <v-textarea v-model="e.desc" label="описание" variant="outlined"></v-textarea>
+                        <v-text-field v-model="e.title" :label="$t('title')" variant="outlined"></v-text-field>
+                        <v-text-field v-model="e.author" :label="$t('author')" variant="outlined"></v-text-field>
+                        <v-text-field v-model="e.year" :label="$t('year')" variant="outlined"></v-text-field>
+                        <v-select v-model="e.genre" :label="$t('genre')" :items="g" variant="outlined"></v-select>
+                        <v-textarea v-model="e.desc" :label="$t('desc')" variant="outlined"></v-textarea>
                     </v-card-text>
                     <v-card-actions>
-                        <v-btn @click="d = false">нет</v-btn>
-                        <v-btn @click="saveEdit" color="primary">да</v-btn>
+                        <v-btn @click="d = false">{{ $t('cancel') }}</v-btn>
+                        <v-btn @click="saveEdit" color="primary">{{ $t('save') }}</v-btn>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
@@ -108,6 +128,143 @@
 
 <script>
 const { createApp, ref, computed } = Vue;
+const { createStore } = Vuex;
+const { createI18n } = VueI18n;
+
+const i18n = createI18n({
+    locale: 'ru',
+    fallbackLocale: 'ru',
+    messages: {
+        ru: {
+            newBook: 'Новая книга',
+            title: 'Название',
+            author: 'Автор',
+            year: 'Год',
+            genre: 'Жанр',
+            desc: 'Описание',
+            add: 'Добавить',
+            stats: 'Статистика',
+            total: 'Всего книг',
+            read: 'Прочитано',
+            unread: 'Не прочитано',
+            list: 'Список книг',
+            search: 'Поиск',
+            all: 'Все',
+            readBtn: 'Прочитанные',
+            unreadBtn: 'Непрочитанные',
+            empty: 'Нет книг',
+            deleteAll: 'Удалить всё',
+            markAll: 'Всё прочитано',
+            edit: 'Редактирование книги',
+            cancel: 'Отмена',
+            save: 'Сохранить'
+        },
+        en: {
+            newBook: 'New Book',
+            title: 'Title',
+            author: 'Author',
+            year: 'Year',
+            genre: 'Genre',
+            desc: 'Description',
+            add: 'Add',
+            stats: 'Statistics',
+            total: 'Total books',
+            read: 'Read',
+            unread: 'Unread',
+            list: 'Book List',
+            search: 'Search',
+            all: 'All',
+            readBtn: 'Read',
+            unreadBtn: 'Unread',
+            empty: 'No books',
+            deleteAll: 'Delete all',
+            markAll: 'Mark all read',
+            edit: 'Edit book',
+            cancel: 'Cancel',
+            save: 'Save'
+        }
+    }
+});
+
+const store = createStore({
+    state() {
+        return {
+            books: []
+        };
+    },
+    mutations: {
+        SET_BOOKS(state, books) {
+            state.books = books;
+        },
+        ADD_BOOK(state, book) {
+            state.books.push(book);
+        },
+        UPDATE_BOOK(state, payload) {
+            state.books[payload.index] = payload.book;
+        },
+        DELETE_BOOK(state, index) {
+            state.books.splice(index, 1);
+        },
+        TOGGLE_READ(state, index) {
+            state.books[index].read = !state.books[index].read;
+        },
+        MARK_ALL_READ(state) {
+            state.books.forEach(book => book.read = true);
+        },
+        CLEAR_ALL(state) {
+            state.books = [];
+        }
+    },
+    actions: {
+        loadBooks({ commit }) {
+            const saved = localStorage.getItem('book_library');
+            if (saved) {
+                commit('SET_BOOKS', JSON.parse(saved));
+            } else {
+                const defaultBooks = [
+                    { title: 'Война и мир', author: 'Толстой', year: '1869', genre: 'роман', desc: 'роман-эпопея', read: false },
+                    { title: 'Преступление и наказание', author: 'Достоевский', year: '1866', genre: 'роман', desc: 'психологический роман', read: true },
+                    { title: 'Мастер и Маргарита', author: 'Булгаков', year: '1967', genre: 'фантастика', desc: 'роман о дьяволе', read: false }
+                ];
+                commit('SET_BOOKS', defaultBooks);
+            }
+        },
+        saveBooks({ state }) {
+            localStorage.setItem('book_library', JSON.stringify(state.books));
+        },
+        addBook({ commit, dispatch }, book) {
+            commit('ADD_BOOK', book);
+            dispatch('saveBooks');
+        },
+        updateBook({ commit, dispatch }, payload) {
+            commit('UPDATE_BOOK', payload);
+            dispatch('saveBooks');
+        },
+        deleteBook({ commit, dispatch }, index) {
+            commit('DELETE_BOOK', index);
+            dispatch('saveBooks');
+        },
+        toggleRead({ commit, dispatch }, index) {
+            commit('TOGGLE_READ', index);
+            dispatch('saveBooks');
+        },
+        markAllRead({ commit, dispatch }) {
+            commit('MARK_ALL_READ');
+            dispatch('saveBooks');
+        },
+        clearAll({ commit, dispatch }) {
+            commit('CLEAR_ALL');
+            dispatch('saveBooks');
+        }
+    },
+    getters: {
+        allBooks: (state) => state.books,
+        totalCount: (state) => state.books.length,
+        readCount: (state) => state.books.filter(book => book.read).length,
+        unreadCount: (state) => state.books.filter(book => !book.read).length
+    }
+});
+
 const vuetify = Vuetify.createVuetify();
 
 createApp({
@@ -127,9 +284,9 @@ createApp({
                 b.value = JSON.parse(x);
             } else {
                 b.value = [
-                    { title: 'война и мир', author: 'толстой', year: '1869', genre: 'роман', desc: 'про войну', read: true },
-                    { title: 'преступление и наказание', author: 'достоевский', year: '1866', genre: 'роман', desc: 'про студента', read: false },
-                    { title: 'мастер и маргарита', author: 'булгаков', year: '1967', genre: 'фантастика', desc: 'про мастера', read: false }
+                    { title: 'Война и мир', author: 'Толстой', year: '1869', genre: 'роман', desc: 'про войну', read: true },
+                    { title: 'Преступление и наказание', author: 'Достоевский', year: '1866', genre: 'роман', desc: 'про студента', read: false },
+                    { title: 'Мастер и Маргарита', author: 'Булгаков', year: '1967', genre: 'фантастика', desc: 'про мастера', read: false }
                 ];
             }
         };
@@ -154,7 +311,7 @@ createApp({
         };
         
         let del = (i) => {
-            if (confirm('удалить?')) {
+            if (confirm('Удалить?')) {
                 b.value.splice(i, 1);
                 save();
             }
@@ -173,7 +330,7 @@ createApp({
         };
         
         let clear = () => {
-            if (confirm('удалить всё?')) {
+            if (confirm('Удалить всё?')) {
                 b.value = [];
                 save();
             }
@@ -205,7 +362,7 @@ createApp({
             add, del, edit, saveEdit, clear, markAll, save
         };
     }
-}).use(vuetify).mount('#app');
+}).use(vuetify).use(store).use(i18n).mount('#app');
 </script>
 
 </body>
